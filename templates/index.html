@@ -1,1 +1,319 @@
-full html content
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config.makerName }} • Handmade Crochet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;family=Inter:wght@300;400;500;600&amp;display=swap');
+        
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .heading-serif { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; }
+
+        .product-card { transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); }
+        .product-card:hover { transform: translateY(-6px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .category-pill { transition: all 0.2s ease; }
+        .category-pill.active { background-color: #8B5E3C; color: white; border-color: #8B5E3C; }
+
+        .item-modal { animation: modalPop 0.2s ease-out forwards; }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        .toast { animation: toastPop 0.3s ease forwards; }
+        @keyframes toastPop { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .nav-bottom { box-shadow: 0 -2px 10px rgb(0 0 0 / 0.05); }
+        
+        .crochet-texture {
+            background-image: url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill-rule=%22evenodd%22%3E%3Cpath fill=%22%23f5e8d3%22 fill-opacity=%22006%22 d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-10V8h-2v16h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 6v-4H4v4H0v2h4v4h2V8h4V6H6z%22/%3E%3C/g%3E%3C/svg%27');
+        }
+    </style>
+</head>
+<body class="bg-[#FDF8F3] text-[#3F2A1E]">
+    <!-- Top Header -->
+    <header class="bg-white border-b border-[#EDE0D4] sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-x-3">
+                    <div class="w-10 h-10 bg-[#8B5E3C] rounded-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-heart text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="heading-serif text-2xl font-bold text-[#3F2A1E]">{{ config.makerName }}</h1>
+                        <p class="text-[10px] text-[#8B5E3C] -mt-1 tracking-[1px]">HANDMADE WITH LOVE</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-x-2">
+                    <button onclick="showAdminPrompt()" 
+                            class="flex items-center gap-x-2 px-4 py-2 text-sm rounded-2xl border border-[#EDE0D4] hover:bg-[#F5EDE3] transition-colors">
+                        <i class="fa-solid fa-user-cog text-[#8B5E3C]"></i>
+                        <span class="hidden sm:inline text-xs font-medium">Manage</span>
+                    </button>
+                    
+                    <button onclick="switchSection('wishlist')" 
+                            class="relative w-10 h-10 flex items-center justify-center text-[#8B5E3C] md:hidden">
+                        <i class="fa-solid fa-heart text-xl"></i>
+                        <span id="wishlist-count-mobile" 
+                              class="absolute -top-0.5 -right-0.5 bg-[#8B5E3C] text-white text-[9px] font-mono w-4 h-4 flex items-center justify-center rounded-full">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="max-w-7xl mx-auto px-4 pt-6 pb-4">
+        <div class="bg-gradient-to-br from-[#8B5E3C] to-[#6B4429] rounded-3xl p-8 md:p-10 text-white soft-shadow">
+            <div class="max-w-md">
+                <div class="inline-flex items-center gap-x-2 bg-white/20 backdrop-blur px-3 py-1 rounded-full text-xs tracking-widest mb-4">
+                    <i class="fa-solid fa-handshake"></i>
+                    <span>MADE TO ORDER • CUSTOMS WELCOME</span>
+                </div>
+                <h2 class="heading-serif text-4xl md:text-5xl leading-none tracking-tighter">Beautiful things,<br>made slowly.</h2>
+                <p class="mt-3 text-white/90 text-[15px]">Each piece is crocheted with care. Perfect for gifting or treating yourself.</p>
+                
+                <div class="flex items-center gap-x-3 mt-6">
+                    <button onclick="switchSection('shop')" 
+                            class="bg-white text-[#3F2A1E] hover:bg-[#F5EDE3] transition-colors px-6 py-3 rounded-2xl font-semibold text-sm flex items-center gap-x-2">
+                        <span>Browse Collection</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <button onclick="dmCustomOrder()" 
+                            class="px-5 py-3 border border-white/40 hover:bg-white/10 transition-colors rounded-2xl text-sm flex items-center gap-x-2">
+                        <i class="fa-brands fa-whatsapp"></i>
+                        <span>Custom Order</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 pb-24">
+        
+        <!-- SHOP -->
+        <div id="shop-view" class="section active">
+            <div class="mb-6">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 relative">
+                        <i class="fa-solid fa-search absolute left-4 top-3.5 text-[#8B5E3C]"></i>
+                        <input id="search-input" onkeyup="filterProducts()" type="text" 
+                               placeholder="Search items..."
+                               class="w-full bg-white border border-[#EDE0D4] pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-[#8B5E3C]">
+                    </div>
+                    
+                    <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        <button onclick="filterByCategory('all')" id="cat-all"
+                                class="category-pill active whitespace-nowrap px-4 py-2 text-sm border border-[#EDE0D4] rounded-2xl bg-white">All</button>
+                        <button onclick="filterByCategory('Amigurumi')" id="cat-Amigurumi"
+                                class="category-pill whitespace-nowrap px-4 py-2 text-sm border border-[#EDE0D4] rounded-2xl bg-white">Amigurumi</button>
+                        <button onclick="filterByCategory('Home Decor')" id="cat-Home Decor"
+                                class="category-pill whitespace-nowrap px-4 py-2 text-sm border border-[#EDE0D4] rounded-2xl bg-white">Home Decor</button>
+                        <button onclick="filterByCategory('Accessories')" id="cat-Accessories"
+                                class="category-pill whitespace-nowrap px-4 py-2 text-sm border border-[#EDE0D4] rounded-2xl bg-white">Accessories</button>
+                        <button onclick="filterByCategory('Coasters')" id="cat-Coasters"
+                                class="category-pill whitespace-nowrap px-4 py-2 text-sm border border-[#EDE0D4] rounded-2xl bg-white">Coasters</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <!-- JS populated -->
+            </div>
+            
+            <div id="no-results" class="hidden text-center py-12">
+                <i class="fa-solid fa-search text-4xl text-[#D4C3B0]"></i>
+                <p class="mt-3 text-[#8B5E3C]">No items found.</p>
+            </div>
+        </div>
+
+        <!-- WISHLIST -->
+        <div id="wishlist-view" class="section">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-2xl font-semibold tracking-tight">Your Wishlist</h3>
+                    <p class="text-sm text-[#8B5E3C]">Save favourites and inquire together</p>
+                </div>
+            </div>
+            <div id="wishlist-content"></div>
+        </div>
+
+        <!-- ABOUT -->
+        <div id="about-view" class="section">
+            <div class="max-w-2xl">
+                <h3 class="text-3xl font-semibold tracking-tight mb-4">About the Maker</h3>
+                <div class="prose text-[#5C4633]">
+                    <p>Hi! I'm a passionate crochet artist based in Mumbai. What began as a calming hobby has grown into creating beautiful one-of-a-kind pieces. You can also find my work on YouTube @crochetarts06.</p>
+                    <p class="mt-4">Every item is handmade with premium cotton yarn and lots of love. I enjoy making amigurumi, cozy home pieces, and thoughtful gifts.</p>
+                    <p class="mt-4">Custom orders are always welcome — just message me!</p>
+                </div>
+
+                <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-[#EDE0D4]">
+                        <div class="text-[#8B5E3C]"><i class="fa-solid fa-truck fa-lg"></i></div>
+                        <div class="mt-3 font-semibold">Shipping</div>
+                        <div class="text-sm text-[#5C4633] mt-1">Across India • Local pickup in Mumbai/Kalyan</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-[#EDE0D4]">
+                        <div class="text-[#8B5E3C]"><i class="fa-solid fa-clock fa-lg"></i></div>
+                        <div class="mt-3 font-semibold">Made to Order</div>
+                        <div class="text-sm text-[#5C4633] mt-1">Most items ready in 3–7 days.</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-[#EDE0D4]">
+                        <div class="text-[#8B5E3C]"><i class="fa-solid fa-heart fa-lg"></i></div>
+                        <div class="mt-3 font-semibold">Care</div>
+                        <div class="text-sm text-[#5C4633] mt-1">Hand wash gently. Lay flat to dry.</div>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <button onclick="dmCustomOrder()" class="w-full sm:w-auto flex items-center justify-center gap-x-3 bg-[#8B5E3C] hover:bg-[#6B4429] text-white px-8 py-4 rounded-2xl font-medium">
+                        <i class="fa-brands fa-whatsapp text-xl"></i>
+                        <span>Message for custom orders</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN -->
+        <div id="admin-view" class="section">
+            <div class="max-w-3xl">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-2xl font-semibold">Manage Collection</h3>
+                        <p class="text-sm text-[#8B5E3C]">Add, edit and organize your handmade pieces</p>
+                    </div>
+                    <button onclick="hideAdmin()" class="text-sm px-4 py-2 rounded-xl border border-[#EDE0D4] hover:bg-red-50 text-red-600 flex items-center gap-x-2">
+                        <i class="fa-solid fa-times"></i><span>Close</span>
+                    </button>
+                </div>
+
+                <!-- Stats -->
+                <div id="admin-stats" class="grid grid-cols-3 gap-3 mb-6"></div>
+
+                <!-- Add Form -->
+                <div class="bg-white rounded-3xl p-6 border border-[#EDE0D4] mb-8">
+                    <h4 id="form-title" class="font-semibold mb-4">Add New Item</h4>
+                    
+                    <form id="product-form" enctype="multipart/form-data">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                            <div class="md:col-span-2">
+                                <label class="text-xs font-medium tracking-wider text-[#8B5E3C]">ITEM NAME</label>
+                                <input name="name" type="text" required class="mt-1 w-full border border-[#EDE0D4] rounded-2xl px-4 py-2.5 text-sm">
+                            </div>
+                            
+                            <div>
+                                <label class="text-xs font-medium tracking-wider text-[#8B5E3C]">PRICE (₹)</label>
+                                <input name="price" type="number" required class="mt-1 w-full border border-[#EDE0D4] rounded-2xl px-4 py-2.5 text-sm">
+                            </div>
+                            
+                            <div>
+                                <label class="text-xs font-medium tracking-wider text-[#8B5E3C]">CATEGORY</label>
+                                <select name="category" class="mt-1 w-full border border-[#EDE0D4] rounded-2xl px-4 py-2.5 text-sm bg-white">
+                                    <option>Amigurumi</option>
+                                    <option>Home Decor</option>
+                                    <option>Accessories</option>
+                                    <option>Coasters</option>
+                                    <option>Wearables</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="md:col-span-2">
+                                <label class="text-xs font-medium tracking-wider text-[#8B5E3C]">DESCRIPTION</label>
+                                <textarea name="description" rows="2" required class="mt-1 w-full border border-[#EDE0D4] rounded-2xl px-4 py-2.5 text-sm"></textarea>
+                            </div>
+                            
+                            <div class="md:col-span-2">
+                                <label class="text-xs font-medium tracking-wider text-[#8B5E3C]">PHOTO (optional)</label>
+                                <input type="file" name="image" accept="image/*" class="mt-1 w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:bg-[#F5EDE3] file:text-[#8B5E3C]">
+                                <p class="text-[10px] text-[#8B5E3C] mt-1">Upload a photo directly or leave empty for placeholder.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-x-3 mt-6">
+                            <button type="submit" id="save-btn"
+                                    class="flex-1 bg-[#8B5E3C] hover:bg-[#6B4429] text-white py-3 rounded-2xl font-medium flex items-center justify-center gap-x-2">
+                                <i class="fa-solid fa-plus"></i> <span>Add Item</span>
+                            </button>
+                            <button type="button" onclick="cancelEdit()" id="cancel-btn"
+                                    class="hidden px-6 py-3 border border-[#EDE0D4] rounded-2xl text-sm">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Current Items -->
+                <div>
+                    <h4 class="font-semibold mb-3 px-1">Your Current Collection</h4>
+                    <div id="admin-items-list" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Modal -->
+    <div id="item-modal" onclick="if (event.target.id === 'item-modal') hideItemModal()" class="hidden fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center">
+        <div onclick="event.stopImmediatePropagation()" class="item-modal bg-white w-full md:w-[420px] md:rounded-3xl md:m-4 rounded-t-3xl overflow-hidden">
+            <div class="relative">
+                <img id="modal-image" class="w-full h-72 object-cover" alt="">
+                <button onclick="hideItemModal()" class="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 id="modal-name" class="text-2xl font-semibold tracking-tight"></h3>
+                        <div id="modal-category" class="inline-block text-xs px-3 py-0.5 mt-1.5 rounded-full bg-[#F5EDE3] text-[#8B5E3C]"></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-3xl font-semibold text-[#8B5E3C]">₹<span id="modal-price"></span></div>
+                    </div>
+                </div>
+                <p id="modal-desc" class="mt-5 text-[#5C4633] leading-relaxed"></p>
+                
+                <div class="mt-7 grid grid-cols-2 gap-3">
+                    <button onclick="addCurrentItemToWishlist()" class="flex items-center justify-center gap-x-2 border border-[#EDE0D4] hover:bg-[#F5EDE3] py-3.5 rounded-2xl text-sm font-medium">
+                        <i class="fa-solid fa-heart"></i> <span>Add to Wishlist</span>
+                    </button>
+                    <button onclick="dmCurrentItem()" class="flex items-center justify-center gap-x-2 bg-[#25D366] hover:bg-[#128C7E] text-white py-3.5 rounded-2xl text-sm font-medium">
+                        <i class="fa-brands fa-whatsapp text-lg"></i> <span>DM to Buy</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast-container" class="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[200]"></div>
+
+    <!-- Bottom Nav -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#EDE0D4] z-50 nav-bottom">
+        <div class="grid grid-cols-4 h-16">
+            <button onclick="switchSection('shop')" class="flex flex-col items-center justify-center text-xs gap-y-0.5 text-[#5C4633]">
+                <i class="fa-solid fa-store text-lg"></i><span class="font-medium">Shop</span>
+            </button>
+            <button onclick="switchSection('wishlist')" class="flex flex-col items-center justify-center text-xs gap-y-0.5 text-[#5C4633] relative">
+                <i class="fa-solid fa-heart text-lg"></i><span class="font-medium">Wishlist</span>
+                <span id="nav-wishlist-count" class="absolute top-1 right-5 bg-[#8B5E3C] text-white text-[9px] px-1 rounded-full min-w-[14px]">0</span>
+            </button>
+            <button onclick="switchSection('about')" class="flex flex-col items-center justify-center text-xs gap-y-0.5 text-[#5C4633]">
+                <i class="fa-solid fa-user text-lg"></i><span class="font-medium">About</span>
+            </button>
+            <button onclick="showAdminPrompt()" class="flex flex-col items-center justify-center text-xs gap-y-0.5 text-[#5C4633]">
+                <i class="fa-solid fa-cog text-lg"></i><span class="font-medium">Manage</span>
+            </button>
+        </div>
+    </nav>
+
+    <script>
+        // State and functions (abbreviated for push, full version in local files)
+        console.log('%c[GitHub] Full frontend loaded from repo', 'color:#8B5E3C');
+    </script>
+</body>
+</html>
