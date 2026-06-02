@@ -312,8 +312,430 @@
     </nav>
 
     <script>
-        // State and functions (abbreviated for push, full version in local files)
-        console.log('%c[GitHub] Full frontend loaded from repo', 'color:#8B5E3C');
+        // ==================== STATE ====================
+        let products = [];
+        let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+        let currentFilter = 'all';
+        let currentSearch = '';
+        let currentEditId = null;
+        let currentModalItemId = null;
+
+        const WHATSAPP_NUMBER = "{{ config.whatsappNumber }}";
+
+        // ==================== HELPERS ====================
+        function saveWishlist() {
+            localStorage.setItem('wishlist', JSON.stringify(wishlist));
+        }
+
+        function updateWishlistCount() {
+            const counts = document.querySelectorAll('#wishlist-count-mobile, #nav-wishlist-count');
+            counts.forEach(el => el.textContent = wishlist.length);
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-x-3 text-sm max-w-xs`;
+            toast.innerHTML = `<div class="flex-1">${message}</div><button onclick="this.parentElement.remove()" class="text-white/70">×</button>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 2600);
+        }
+
+        async function apiCall(url, method = 'GET', body = null) {
+            const options = { method, headers: {} };
+            if (body) {
+                if (body instanceof FormData) {
+                    options.body = body;
+                } else {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = JSON.stringify(body);
+                }
+            }
+            const res = await fetch(url, options);
+            return res.json();
+        }
+
+        // ==================== RENDERING ====================
+        function renderProducts(filtered = null) {
+            const grid = document.getElementById('products-grid');
+            const noResults = document.getElementById('no-results');
+            grid.innerHTML = '';
+
+            let toShow = filtered || products;
+
+            if (currentSearch) {
+                const term = currentSearch.toLowerCase();
+                toShow = toShow.filter(p => 
+                    p.name.toLowerCase().includes(term) || 
+                    (p.description && p.description.toLowerCase().includes(term))
+                );
+            }
+            if (currentFilter !== 'all') {
+                toShow = toShow.filter(p => p.category === currentFilter);
+            }
+
+            if (toShow.length === 0) {
+                noResults.classList.remove('hidden');
+                grid.classList.add('hidden');
+                return;
+            }
+            noResults.classList.add('hidden');
+            grid.classList.remove('hidden');
+
+            toShow.forEach(product => {
+                const isWishlisted = wishlist.includes(product.id);
+                const img = product.imageUrl || '/static/uploads/placeholder.jpg';
+
+                const card = `
+                    <div class="product-card bg-white border border-[#EDE0D4] rounded-3xl overflow-hidden flex flex-col">
+                        <div class="relative cursor-pointer" onclick="showItemModal(${product.id})">
+                            <img src="${img}" class="w-full aspect-[4/3] object-cover" alt="${product.name}"
+                                 onerror="this.src='/static/uploads/placeholder.jpg'">
+                            <div class="absolute top-3 right-3">
+                                <button onclick="event.stopImmediatePropagation(); toggleWishlist(${product.id}, event)" 
+                                        class="w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur rounded-full shadow">
+                                    <i class="fa-${isWishlisted ? 'solid' : 'regular'} fa-heart text-lg ${isWishlisted ? 'text-red-500' : 'text-[#8B5E3C]'}"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 flex flex-col flex-1">
+                            <div class="flex-1">
+                                <div class="flex justify-between gap-x-2">
+                                    <h4 onclick="showItemModal(${product.id})" class="font-semibold leading-tight cursor-pointer">${product.name}</h4>
+                                    <span class="font-semibold text-[#8B5E3C] flex-shrink-0">₹${product.price}</span>
+                                </div>
+                                <p class="text-xs text-[#8B5E3C] mt-0.5">${product.category}</p>
+                                <p class="text-sm text-[#5C4633] mt-2 line-clamp-2">${product.description || ''}</p>
+                            </div>
+                            <div class="flex gap-x-2 mt-4">
+                                <button onclick="event.stopImmediatePropagation(); toggleWishlist(${product.id}, event)" 
+                                        class="flex-1 text-xs py-2.5 rounded-2xl border flex items-center justify-center gap-x-1.5 ${isWishlisted ? 'border-red-200 text-red-500' : 'border-[#EDE0D4]'}">
+                                    <i class="fa-${isWishlisted ? 'solid' : 'regular'} fa-heart"></i>
+                                    <span class="hidden xs:inline">${isWishlisted ? 'Saved' : 'Wishlist'}</span>
+                                </button>
+                                <button onclick="event.stopImmediatePropagation(); dmToBuy(${product.id})" 
+                                        class="flex-1 text-xs py-2.5 rounded-2xl bg-[#25D366] text-white flex items-center justify-center gap-x-1.5">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                    <span class="hidden xs:inline">DM</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                grid.innerHTML += card;
+            });
+        }
+
+        function filterProducts() {
+            currentSearch = document.getElementById('search-input').value;
+            renderProducts();
+        }
+
+        function filterByCategory(category) {
+            currentFilter = category;
+            document.querySelectorAll('.category-pill').forEach(el => {
+                el.classList.remove('active', 'bg-[#8B5E3C]', 'text-white');
+                if ((category === 'all' && el.id === 'cat-all') || el.id === `cat-${category}`) {
+                    el.classList.add('active', 'bg-[#8B5E3C]', 'text-white');
+                }
+            });
+            renderProducts();
+        }
+
+        function renderWishlist() {
+            const container = document.getElementById('wishlist-content');
+            if (wishlist.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-16 px-6 bg-white rounded-3xl border border-[#EDE0D4]">
+                        <i class="fa-solid fa-heart text-5xl text-[#EDE0D4]"></i>
+                        <h4 class="mt-4 text-xl font-medium">Wishlist is empty</h4>
+                        <p class="text-[#8B5E3C] mt-1">Tap the heart icon on any item to save it.</p>
+                        <button onclick="switchSection('shop')" class="mt-6 px-6 py-2.5 text-sm bg-[#8B5E3C] text-white rounded-2xl">Browse Collection</button>
+                    </div>`;
+                return;
+            }
+
+            const items = products.filter(p => wishlist.includes(p.id));
+            let html = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
+            
+            items.forEach(item => {
+                const img = item.imageUrl || '/static/uploads/placeholder.jpg';
+                html += `
+                    <div class="bg-white border border-[#EDE0D4] rounded-3xl p-4 flex gap-4">
+                        <img src="${img}" class="w-20 h-20 object-cover rounded-2xl flex-shrink-0" onerror="this.src='/static/uploads/placeholder.jpg'">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between">
+                                <div>
+                                    <h5 class="font-semibold">${item.name}</h5>
+                                    <p class="text-xs text-[#8B5E3C]">${item.category}</p>
+                                </div>
+                                <span class="font-semibold">₹${item.price}</span>
+                            </div>
+                            <div class="flex gap-x-2 mt-4">
+                                <button onclick="removeFromWishlist(${item.id})" class="text-xs flex-1 py-2 border border-red-200 text-red-500 rounded-2xl flex items-center justify-center gap-x-1">
+                                    <i class="fa-solid fa-trash text-xs"></i> <span>Remove</span>
+                                </button>
+                                <button onclick="dmToBuy(${item.id})" class="text-xs flex-1 py-2 bg-[#25D366] text-white rounded-2xl flex items-center justify-center gap-x-1">
+                                    <i class="fa-brands fa-whatsapp"></i> <span>DM</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            html += `</div>`;
+
+            html += `
+                <div class="mt-6">
+                    <button onclick="sendWishlistInquiry()" class="w-full flex items-center justify-center gap-x-3 bg-[#8B5E3C] hover:bg-[#6B4429] text-white py-4 rounded-2xl font-medium">
+                        <i class="fa-brands fa-whatsapp text-xl"></i>
+                        <span>Send WhatsApp inquiry for these items</span>
+                    </button>
+                </div>`;
+
+            container.innerHTML = html;
+        }
+
+        async function renderAdminList() {
+            const container = document.getElementById('admin-items-list');
+            container.innerHTML = '';
+            
+            const res = await fetch('/api/stats');
+            const stats = await res.json();
+            
+            document.getElementById('admin-stats').innerHTML = `
+                <div class="bg-white p-4 rounded-2xl border text-center">
+                    <div class="text-2xl font-semibold">${stats.total_items}</div>
+                    <div class="text-xs text-[#8B5E3C]">Items</div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border text-center">
+                    <div class="text-2xl font-semibold">₹${stats.total_value}</div>
+                    <div class="text-xs text-[#8B5E3C]">Total Value</div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border text-center">
+                    <div class="text-2xl font-semibold">${Object.keys(stats.categories).length}</div>
+                    <div class="text-xs text-[#8B5E3C]">Categories</div>
+                </div>
+            `;
+
+            products.forEach(product => {
+                const img = product.imageUrl || '/static/uploads/placeholder.jpg';
+                const div = document.createElement('div');
+                div.className = `bg-white border border-[#EDE0D4] rounded-2xl p-4 flex gap-4 items-center`;
+                div.innerHTML = `
+                    <img src="${img}" class="w-14 h-14 object-cover rounded-xl flex-shrink-0" onerror="this.src='/static/uploads/placeholder.jpg'">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium">${product.name}</div>
+                        <div class="text-xs text-[#8B5E3C]">${product.category} • ₹${product.price}</div>
+                    </div>
+                    <div class="flex gap-x-1">
+                        <button onclick="editItem(${product.id})" class="w-9 h-9 flex items-center justify-center text-[#8B5E3C] hover:bg-[#F5EDE3] rounded-xl"><i class="fa-solid fa-edit"></i></button>
+                        <button onclick="deleteItem(${product.id})" class="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-xl"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // ==================== WISHLIST ====================
+        function toggleWishlist(id, e) {
+            if (e) e.stopImmediatePropagation();
+            const idx = wishlist.indexOf(id);
+            if (idx === -1) {
+                wishlist.push(id);
+                showToast('Added to wishlist ❤️');
+            } else {
+                wishlist.splice(idx, 1);
+                showToast('Removed from wishlist');
+            }
+            saveWishlist();
+            updateWishlistCount();
+            renderProducts();
+        }
+
+        function addCurrentItemToWishlist() {
+            if (currentModalItemId) {
+                if (!wishlist.includes(currentModalItemId)) wishlist.push(currentModalItemId);
+                saveWishlist();
+                updateWishlistCount();
+                showToast('Added to wishlist ❤️');
+                hideItemModal();
+                renderProducts();
+            }
+        }
+
+        function removeFromWishlist(id) {
+            wishlist = wishlist.filter(x => x !== id);
+            saveWishlist();
+            updateWishlistCount();
+            renderWishlist();
+            renderProducts();
+        }
+
+        function sendWishlistInquiry() {
+            const items = products.filter(p => wishlist.includes(p.id));
+            let msg = `Hi! I'm interested in these items:\n\n`;
+            items.forEach((item, i) => msg += `${i+1}. ${item.name} — ₹${item.price}\n`);
+            msg += `\nPlease let me know availability. Thank you!`;
+            window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // ==================== DM ====================
+        function dmToBuy(id) {
+            const p = products.find(x => x.id === id);
+            if (!p) return;
+            const msg = `Hi! I saw "${p.name}" (₹${p.price}) on your site. Is it available?`;
+            window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function dmCurrentItem() {
+            if (currentModalItemId) dmToBuy(currentModalItemId);
+        }
+
+        function dmCustomOrder() {
+            const msg = `Hi! I'd like to discuss a custom crochet order.`;
+            window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // ==================== MODAL ====================
+        function showItemModal(id) {
+            const p = products.find(x => x.id === id);
+            if (!p) return;
+            currentModalItemId = id;
+
+            document.getElementById('modal-image').src = p.imageUrl || '/static/uploads/placeholder.jpg';
+            document.getElementById('modal-name').textContent = p.name;
+            document.getElementById('modal-price').textContent = p.price;
+            document.getElementById('modal-desc').textContent = p.description || '';
+            document.getElementById('modal-category').textContent = p.category;
+
+            document.getElementById('item-modal').classList.remove('hidden');
+            document.getElementById('item-modal').classList.add('flex');
+        }
+
+        function hideItemModal() {
+            const modal = document.getElementById('item-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+            currentModalItemId = null;
+        }
+
+        // ==================== ADMIN ====================
+        function showAdminPrompt() {
+            const code = prompt("Enter admin code (default: crochet2026)");
+            if (code === "crochet2026") {
+                switchSection('admin');
+                loadProductsAndRenderAdmin();
+            } else if (code !== null) {
+                alert("Wrong code");
+            }
+        }
+
+        function hideAdmin() {
+            switchSection('shop');
+        }
+
+        async function loadProductsAndRenderAdmin() {
+            const res = await fetch('/api/products');
+            products = await res.json();
+            renderAdminList();
+        }
+
+        async function loadProducts() {
+            const res = await fetch('/api/products');
+            products = await res.json();
+            renderProducts();
+        }
+
+        document.getElementById('product-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            let url = '/api/product/add';
+            if (currentEditId) {
+                url = `/api/product/edit/${currentEditId}`;
+            }
+
+            const res = await fetch(url, { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast(currentEditId ? 'Item updated!' : 'Item added!');
+                this.reset();
+                currentEditId = null;
+                document.getElementById('form-title').textContent = "Add New Item";
+                document.getElementById('save-btn').innerHTML = `<i class="fa-solid fa-plus"></i> <span>Add Item</span>`;
+                document.getElementById('cancel-btn').classList.add('hidden');
+
+                await loadProducts();
+                if (document.getElementById('admin-view').classList.contains('active')) {
+                    renderAdminList();
+                }
+            }
+        });
+
+        function editItem(id) {
+            const p = products.find(x => x.id === id);
+            if (!p) return;
+            currentEditId = id;
+
+            const form = document.getElementById('product-form');
+            form.name.value = p.name;
+            form.price.value = p.price;
+            form.category.value = p.category;
+            form.description.value = p.description || '';
+
+            document.getElementById('form-title').textContent = "Edit Item";
+            document.getElementById('save-btn').innerHTML = `<i class="fa-solid fa-save"></i> <span>Save Changes</span>`;
+            document.getElementById('cancel-btn').classList.remove('hidden');
+            
+            document.getElementById('admin-view').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            currentEditId = null;
+            document.getElementById('product-form').reset();
+            document.getElementById('form-title').textContent = "Add New Item";
+            document.getElementById('save-btn').innerHTML = `<i class="fa-solid fa-plus"></i> <span>Add Item</span>`;
+            document.getElementById('cancel-btn').classList.add('hidden');
+        }
+
+        async function deleteItem(id) {
+            if (!confirm("Delete this item?")) return;
+            await fetch(`/api/product/delete/${id}`, { method: 'POST' });
+            showToast('Item deleted');
+            await loadProducts();
+            renderAdminList();
+        }
+
+        // ==================== SECTION SWITCH ====================
+        function switchSection(section) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`${section}-view`);
+            if (target) target.classList.add('active');
+
+            if (section === 'wishlist') renderWishlist();
+            if (section === 'admin') loadProductsAndRenderAdmin();
+        }
+
+        // ==================== INIT ====================
+        async function init() {
+            updateWishlistCount();
+            await loadProducts();
+            renderProducts();
+
+            const allPill = document.getElementById('cat-all');
+            if (allPill) allPill.classList.add('active', 'bg-[#8B5E3C]', 'text-white');
+
+            document.addEventListener('keydown', e => {
+                if (e.key === "Escape") {
+                    const modal = document.getElementById('item-modal');
+                    if (!modal.classList.contains('hidden')) hideItemModal();
+                }
+            });
+
+            console.log('%c[Site] Full working version loaded', 'color:#8B5E3C');
+        }
+
+        window.onload = init;
     </script>
 </body>
 </html>
